@@ -2,6 +2,29 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## Available Custom Subagents
+
+This project includes 14 specialized subagents in `.cursor/agents/`. Invoke explicitly with `/name` syntax or let the agent delegate automatically based on the description.
+
+| Subagent | Purpose |
+|----------|---------|
+| `/ai-engineer` | LLM integrations, RAG systems, prompt pipelines, vector search |
+| `/backend-architect` | RESTful APIs, microservices, database schemas, scalability |
+| `/cloud-architect` | AWS/Azure/GCP infrastructure, Terraform, cost optimization |
+| `/code-reviewer` | Code quality, security review, maintainability analysis |
+| `/composer` | Integration validation, API contract alignment, cross-component compatibility |
+| `/data-engineer` | ETL/ELT pipelines, data warehouses, Spark, streaming |
+| `/debugger` | Root cause analysis, error investigation, stack trace analysis |
+| `/deployment-engineer` | CI/CD pipelines, Docker, Kubernetes, GitHub Actions |
+| `/frontend-developer` | React components, state management, accessibility, responsive design |
+| `/prompt-engineer` | LLM prompt optimization, prompt patterns, system prompts |
+| `/python-pro` | Advanced Python, decorators, async/await, testing, optimization |
+| `/api-security-audit` | API security audits, auth vulnerabilities, injection attacks |
+| `/splitter-agent` | Task decomposition, multi-agent workflow planning |
+| `/ui-ux-designer` | User research, wireframes, design systems, accessibility |
+
+**Note:** Subagents inherit the parent model by default. They have full tool access and can be run in parallel for independent tasks.
+
 ## Quick Reference
 
 ```bash

@@ -50,6 +50,14 @@ else
     echo -e "${GREEN}✓${NC} Copied orchestrated-workflow.mdc"
 fi
 
+# Copy agents directory
+if [ ! -d "$PROJECT_PATH/.cursor/agents" ]; then
+    cp -r "$TEMPLATE_DIR/.cursor/agents" "$PROJECT_PATH/.cursor/"
+    echo -e "${GREEN}✓${NC} Copied .cursor/agents/ (14 subagents)"
+else
+    echo -e "${YELLOW}⚠️${NC}  .cursor/agents/ exists, skipping..."
+fi
+
 # Copy AGENTS.md
 if [ -f "$PROJECT_PATH/AGENTS.md" ]; then
     echo -e "${YELLOW}⚠️${NC}  AGENTS.md exists, skipping..."
@@ -137,23 +145,24 @@ echo -e "${GREEN}║            Setup Complete! ✓               ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo "Installed:"
-echo "  • orchestrated-workflow.mdc (65 lines)"
+echo "  • orchestrated-workflow.mdc (workflow rule)"
+echo "  • .cursor/agents/ (14 custom subagents)"
 echo "  • AGENTS.md (workflow guide)"
 echo "  • Beads (.beads/ directory)"
 echo "  • Serena (.serena/ directory)"
 echo ""
 echo -e "${BLUE}Next Steps:${NC}"
 echo "  1. Commit the new files:"
-echo "     git add .cursor .beads .serena AGENTS.md"
-echo "     git commit -m 'chore: add orchestrated workflow setup'"
+echo "     git add .cursor/ .beads/ .serena/ AGENTS.md"
+echo "     git commit -m 'chore: add orchestrated workflow with custom subagents'"
 echo ""
 echo "  2. Start using the workflow:"
 echo "     bd create --title='First task' --type=task --priority=1"
 echo "     bd ready"
 echo ""
 echo -e "${BLUE}Orchestrated Workflow Enabled:${NC}"
-echo "  • Orchestrator delegates work"
+echo "  • Orchestrator delegates work to custom subagents"
+echo "  • 14 specialized subagents (invoke with /name syntax)"
 echo "  • Beads tracks issues"
-echo "  • Subagents have full tool access"
 echo "  • Agent Mail coordinates"
 echo "  • Serena searches code"
