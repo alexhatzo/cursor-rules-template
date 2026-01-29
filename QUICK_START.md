@@ -7,33 +7,40 @@ cd /path/to/your-project
 cursor-rules
 ```
 
-Done! Orchestrated workflow enabled.
+Done! Two-phase workflow enabled.
 
 ## What This Means
 
-The agent you speak to will:
-1. Break your request into Beads issues
-2. Spawn subagents (one per issue)
-3. Monitor Agent Mail for coordination
-4. Integrate results
+Two cursor rules installed (both `alwaysApply: false`):
+
+1. **planner.mdc** - Invoke when planning new work
+2. **orchestrated-workflow.mdc** - Invoke when executing work
 
 ## Architecture
 
 ```
-You → Orchestrator
+You → Planner (spec & epics)
        ↓
-    Beads Issues
+    Beads Issues (with dependencies)
        ↓
-    Subagents (have full tool access)
+    Orchestrator(s) (register, reserve files)
        ↓
-    Complete Work
+    Subagents (stateless workers)
+       ↓
+    Results returned → Push
 ```
 
 ## What Gets Installed
 
 ```
 your-project/
-├── .cursor/rules/orchestrated-workflow.mdc  (1 rule, 65 lines)
+├── .cursor/rules/
+│   ├── planner.mdc
+│   └── orchestrated-workflow.mdc
+├── .cursor/agents/      # 14 custom subagents
+├── .beads/              # Issue tracking
+├── .openspec/           # Spec docs (if available)
+├── .serena/             # Code search
 └── AGENTS.md
 ```
 
@@ -41,33 +48,56 @@ your-project/
 
 **You:** "Add authentication"
 
-**Orchestrator:**
+**With planner.mdc active:**
 ```bash
+# Planner clarifies requirements, then:
 bd create "Auth schema" --priority=1
 bd create "Auth API" --priority=2
 bd create "Login UI" --priority=2
-
-Task(prompt="Work on bd-101...")
-Task(prompt="Work on bd-102...")
+bd dep add bd-103 bd-102  # UI depends on API
+bd sync
+# "Ready for orchestrators: bd-101, bd-102"
 ```
 
-**Each subagent:**
-- Registers with Agent Mail
-- Reserves files
-- Uses Serena for code search
-- Completes work
-- Closes issue & reports
+**With orchestrated-workflow.mdc active:**
+```bash
+# Orchestrator picks up work
+register_agent(...)
+file_reservation_paths(..., ["db/**", "api/**"])  # Reserve for batch
+Task(prompt="Work on bd-101...")
+Task(prompt="Work on bd-102...")
+# Subagents complete, return results
+release_file_reservations(...)
+git push
+```
+
+## Key Differences from Before
+
+| Before | Now |
+|--------|-----|
+| One rule, `alwaysApply: true` | Two rules, both `alwaysApply: false` |
+| Subagents always register with Agent Mail | Subagents only register if blocked |
+| Subagents reserve their own files | Orchestrator reserves for batch |
+| Subagents send completion messages | Subagents return via Task (unless blocked) |
+| Jump straight to work | Plan first, then execute |
 
 ## Key Answers
 
-**Q: Too many rules?**
-No! Just ONE rule (65 lines).
+**Q: When do I use which rule?**
+- **planner.mdc** - New feature requests, unclear scope, need to think first
+- **orchestrated-workflow.mdc** - Work is defined, ready to execute
 
 **Q: Do subagents have tool access?**
-YES! Full access to Beads, Agent Mail, Serena.
+YES! Beads and Serena. Agent Mail only if they hit a blocker/question.
 
-**Q: How do subagents know what to do?**
-The orchestrated-workflow.mdc rule applies to them too (alwaysApply: true).
+**Q: Can multiple orchestrators run in parallel?**
+YES! Each registers with Agent Mail and reserves its own files.
+
+**Q: How do subagents communicate back?**
+Via Task return value normally. If blocked, they can register and send a message.
+
+**Q: When should a subagent register with Agent Mail?**
+Only when they have a genuine blocker or question that needs external input.
 
 ## Activate Alias
 

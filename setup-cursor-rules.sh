@@ -42,7 +42,14 @@ echo "────────────────────────�
 mkdir -p "$RULES_DIR"
 echo -e "${GREEN}✓${NC} Created .cursor/rules"
 
-# Copy rule file
+# Copy rule files
+if [ -f "$RULES_DIR/planner.mdc" ]; then
+    echo -e "${YELLOW}⚠️${NC}  planner.mdc exists, skipping..."
+else
+    cp "$TEMPLATE_DIR/planner.mdc" "$RULES_DIR/"
+    echo -e "${GREEN}✓${NC} Copied planner.mdc"
+fi
+
 if [ -f "$RULES_DIR/orchestrated-workflow.mdc" ]; then
     echo -e "${YELLOW}⚠️${NC}  orchestrated-workflow.mdc exists, skipping..."
 else
@@ -94,7 +101,24 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 3: Initializing Serena${NC}"
+echo -e "${BLUE}Step 3: Initializing OpenSpec${NC}"
+echo "────────────────────────────────────"
+
+# Check if openspec is installed
+if ! command -v openspec &> /dev/null; then
+    echo -e "${YELLOW}⚠️${NC}  openspec not found, skipping..."
+else
+    if [ ! -d "$PROJECT_PATH/.openspec" ]; then
+        echo "Initializing openspec..."
+        openspec init --tools cursor
+        echo -e "${GREEN}✓${NC} OpenSpec initialized with Cursor tools"
+    else
+        echo -e "${YELLOW}⚠️${NC}  OpenSpec already initialized"
+    fi
+fi
+
+echo ""
+echo -e "${BLUE}Step 4: Initializing Serena${NC}"
 echo "────────────────────────────────────"
 
 # Check if serena directory exists
@@ -145,10 +169,12 @@ echo -e "${GREEN}║            Setup Complete! ✓               ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo "Installed:"
-echo "  • orchestrated-workflow.mdc (workflow rule)"
+echo "  • planner.mdc (planning rule)"
+echo "  • orchestrated-workflow.mdc (execution rule)"
 echo "  • .cursor/agents/ (14 custom subagents)"
 echo "  • AGENTS.md (workflow guide)"
 echo "  • Beads (.beads/ directory)"
+echo "  • OpenSpec (.openspec/ directory, if available)"
 echo "  • Serena (.serena/ directory)"
 echo ""
 echo -e "${BLUE}Next Steps:${NC}"

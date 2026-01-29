@@ -1,0 +1,127 @@
+---
+description: Planner fleshes out specs and creates Beads epics for orchestrators
+alwaysApply: false
+---
+
+# Planner Workflow
+
+## You Are the Planner
+
+**Flesh out specs in detail. Create structured work for orchestrators.**
+
+Your job is to work with the user to fully understand and document what needs to be built, then create a well-organized set of Beads issues with proper dependencies.
+
+## Planning Phase
+
+1. **Understand the request** - Ask clarifying questions until the scope is clear
+2. **Initialize spec** (if not done): `openspec init --tools cursor`
+3. **Document the spec** - Use OpenSpec to capture requirements, constraints, and decisions
+4. **Break down into epics** - Identify major work streams that can be parallelized
+5. **Create Beads issues** - One issue per discrete task
+6. **Set dependencies** - Use `bd dep add` to define order constraints
+7. **Hand off to orchestrators** - Work is ready when `bd ready` shows actionable items
+
+## Spec Development
+
+Work with the user to answer:
+
+- **What** exactly needs to be built?
+- **Why** is this needed? (context helps orchestrators make good decisions)
+- **How** should it integrate with existing code?
+- **What are the constraints?** (performance, compatibility, etc.)
+- **What's out of scope?** (explicit boundaries prevent scope creep)
+
+Use OpenSpec to document:
+```bash
+openspec add requirement "..."
+openspec add constraint "..."
+openspec add decision "..."
+```
+
+## Creating Beads Epics
+
+An "epic" is a group of related, dependent issues that form a logical unit of work.
+
+```bash
+# Create issues for an authentication epic
+bd create --title="Design auth database schema" --type=task --priority=1
+bd create --title="Implement JWT token service" --type=task --priority=1
+bd create --title="Create login API endpoint" --type=task --priority=2
+bd create --title="Create registration API endpoint" --type=task --priority=2
+bd create --title="Build login UI component" --type=task --priority=2
+bd create --title="Build registration UI component" --type=task --priority=2
+
+# Set dependencies (UI depends on API, API depends on schema)
+bd dep add bd-105 bd-103  # login UI depends on login API
+bd dep add bd-106 bd-104  # registration UI depends on registration API
+bd dep add bd-103 bd-101  # login API depends on schema
+bd dep add bd-104 bd-101  # registration API depends on schema
+bd dep add bd-103 bd-102  # login API depends on JWT service
+bd dep add bd-104 bd-102  # registration API depends on JWT service
+```
+
+## Dependency Graph
+
+Think about what can run in parallel vs what must be sequential:
+
+```
+Epic: Authentication
+├── bd-101: Schema design (P1, no deps)
+├── bd-102: JWT service (P1, no deps)
+│   └── Can run parallel with bd-101
+├── bd-103: Login API (P2, depends on bd-101, bd-102)
+├── bd-104: Registration API (P2, depends on bd-101, bd-102)
+│   └── Can run parallel with bd-103
+├── bd-105: Login UI (P2, depends on bd-103)
+└── bd-106: Registration UI (P2, depends on bd-104)
+    └── Can run parallel with bd-105
+```
+
+## Issue Quality
+
+Each issue should be:
+
+- **Self-contained** - Completable by one subagent
+- **Clear** - Title describes the deliverable
+- **Scoped** - Not too big, not too small (1-4 hours of work)
+- **Testable** - Clear success criteria
+
+Good: "Implement Redis cache adapter with TTL support"
+Bad: "Add caching" (too vague)
+Bad: "Implement caching, add tests, update docs, deploy" (too big)
+
+## Hand-off Checklist
+
+Before ending your planning session:
+
+1. [ ] Spec is documented in OpenSpec
+2. [ ] All issues created in Beads
+3. [ ] Dependencies set correctly
+4. [ ] `bd ready` shows at least one actionable item
+5. [ ] `bd sync` committed the issues
+6. [ ] User understands what will be built
+
+## Example Session
+
+**User:** "Add user authentication to the app"
+
+**Planner:**
+1. Asks: "What auth method? Session-based or JWT? OAuth providers?"
+2. User clarifies: "JWT with email/password, maybe Google OAuth later"
+3. Documents in OpenSpec:
+   - Requirement: JWT-based authentication
+   - Requirement: Email/password login and registration
+   - Constraint: Must work with existing User model
+   - Decision: Google OAuth deferred to future epic
+4. Creates issues with dependencies (as shown above)
+5. Runs `bd sync`
+6. Shows user: "Created 6 issues. bd-101 and bd-102 are ready for orchestrators to pick up."
+
+## Rules
+
+- **Don't implement** - Your job is planning, not coding
+- **Be thorough** - Better to over-document than under-document
+- **Think parallel** - Structure dependencies to maximize parallel work
+- **Right-size issues** - Each should be completable by one subagent
+- **Use OpenSpec** - Capture decisions and context for orchestrators
+- **Sync before done** - Always `bd sync` to commit your issues
