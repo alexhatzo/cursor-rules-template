@@ -8,12 +8,17 @@ Global Cursor rules that enforce a planner → orchestrator multi-agent workflow
 
 **planner.mdc** - Planning phase rule
 - Flesh out specs with user via OpenSpec
-- Create Beads epics (issues with dependencies)
+- Supports two entry points: pick up an existing Linear issue (`LIN-XXX`) or start fresh
+- Creates a Linear parent issue (always) + Linear sub-issues mirrored to each Beads task
+- Creates Beads epics (issues with dependencies) with cross-references to Linear
+- Mirrors Beads dependencies as Linear `blockedBy` relations for human visibility
 - Hand off structured work to orchestrators
 
 **orchestrated-workflow.mdc** - Execution phase rule
 - Orchestrators pick up ready work
 - Reserve files for batch, spawn subagents in parallel
+- Subagents update their Linear sub-issue to "In Progress" then "Done" (with implementation notes)
+- Orchestrators mark Linear parent "Done" when all epic issues close
 - Orchestrators always register; subagents only if blocked
 - Subagents are stateless workers by default
 
@@ -29,17 +34,18 @@ Both rules have `alwaysApply: false` - invoke them explicitly when needed.
 ## The Pattern
 
 ```
-User Request
+User Request (or existing Linear issue LIN-XXX)
     ↓
-Planner (flesh out spec, create epics)
+Planner (flesh out spec, create Linear parent + Beads epics)
     ↓
-Beads Epics (issues + dependencies)
+Linear Parent Issue  ←→  Beads Epic (cross-referenced)
+  └── Linear Sub-issues  ←→  Beads Tasks (cross-referenced)
     ↓
 Orchestrator(s) (register, reserve, spawn)
     ↓
-Subagents (stateless workers, return results)
+Subagents (stateless workers → update Linear sub-issue → return results)
     ↓
-Orchestrator releases, pushes
+Orchestrator releases, pushes, marks Linear parent Done
 ```
 
 ## Setup
@@ -98,25 +104,43 @@ your-project/
 
 - ✅ Two-phase workflow (plan → execute)
 - ✅ All work tracked in Beads with dependencies
+- ✅ Every epic has a Linear parent issue (human-visible)
+- ✅ Every Beads task has a mirrored Linear sub-issue with cross-reference IDs
+- ✅ Linear status stays in sync throughout execution (Planner → In Progress, Subagents → Done)
 - ✅ Orchestrators always register; subagents only if blocked
 - ✅ Orchestrators reserve files for subagent batches
 - ✅ Subagents stateless by default (return results via Task)
 - ✅ Serena used for code search
+
+## Linear Project Mapping
+
+Issues are assigned to the Linear project matching the codebase touched:
+
+| Codebase | Linear Project |
+|---|---|
+| `oneoff-api/**` | API |
+| `oow-sm-web/**` | Frontend |
+| `oneoff-web-admin-60/**` | Admin Dashboard |
+| `oneoff-ios/**` | iOS |
+| `oneoff-product-scraper/**` | Chrome Extension Scraper |
 
 ## Tool Access
 
 **Planner:**
 - OpenSpec for spec documentation
 - Beads for creating issues
+- Linear MCP (`get_issue`, `save_issue`) for creating parent + sub-issues
 
 **Orchestrators:**
 - Beads for issue management
+- Linear MCP (`save_issue`) for marking parent Done
 - Agent Mail for registration, reservations, cross-orchestrator messaging
 - Serena for code search
 
 **Subagents:**
 - Beads (create/close issues)
 - Serena (code search)
+- Linear MCP (`save_issue`) for updating their sub-issue status and description
 - Agent Mail (only if blocked/questions - register and message)
 
 ## Why Two Rules?

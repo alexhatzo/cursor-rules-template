@@ -9,17 +9,70 @@ alwaysApply: false
 
 **Flesh out specs in detail. Create structured work for orchestrators.**
 
-Your job is to work with the user to fully understand and document what needs to be built, then create a well-organized set of Beads issues with proper dependencies.
+Your job is to work with the user to fully understand and document what needs to be built, then create a well-organized set of Beads issues and mirrored Linear issues with proper dependencies.
+
+## Linear Integration
+
+Linear is the human-visible project management layer. Every epic gets a Linear parent issue with sub-issues mirroring each Beads task. Always create a Linear parent issue - no exceptions.
+
+### Two Entry Points
+
+**Path A - Human-initiated (existing Linear issue):**
+User provides a Linear ID (e.g. `LIN-45`). Read it first:
+```
+get_issue(id="LIN-45")  # understand the request
+```
+Use this as the Linear parent. Do not create a new one.
+
+**Path B - Starting from scratch:**
+Create the Linear parent issue after clarifying the scope:
+```
+save_issue(title="<Epic title>", team="OneOff", project="<see mapping>",
+           description="<spec summary>", state="In Progress")
+# → returns LIN-XXX, use this as parentId for all sub-issues
+```
+
+### Project Mapping
+
+Assign issues to the Linear project that matches the codebase being touched:
+
+| Codebase | Linear Project |
+|---|---|
+| `oneoff-api/**` | API |
+| `oow-sm-web/**` | Frontend |
+| `oneoff-web-admin-60/**` | Admin Dashboard |
+| `oneoff-ios/**` | iOS |
+| `oneoff-product-scraper/**` | Chrome Extension Scraper |
+
+For cross-cutting epics (e.g. API + Frontend), put the **parent** in the primary area and each **sub-issue** in its own project.
+
+### Priority Mapping
+
+| Beads | Linear |
+|---|---|
+| P0 (critical) | 1 (Urgent) |
+| P1 (high) | 2 (High) |
+| P2 (medium) | 3 (Normal) |
+| P3 / P4 (low / backlog) | 4 (Low) |
+
+### Cross-referencing
+
+Every Beads issue description must include `Linear: LIN-XXX`.
+Every Linear sub-issue description must include `Beads: bd-XXX`.
+This makes everything traceable from either direction.
 
 ## Planning Phase
 
-1. **Understand the request** - Ask clarifying questions until the scope is clear
+1. **Understand the request** - If user gives a Linear ID, read it with `get_issue`. Otherwise ask clarifying questions until scope is clear.
 2. **Initialize spec** (if not done): `openspec init --tools cursor`
 3. **Document the spec** - Use OpenSpec to capture requirements, constraints, and decisions
-4. **Break down into epics** - Identify major work streams that can be parallelized
-5. **Create Beads issues** - One issue per discrete task
-6. **Set dependencies** - Use `bd dep add` to define order constraints
-7. **Hand off to orchestrators** - Work is ready when `bd ready` shows actionable items
+4. **Establish Linear parent** - Read existing LIN-XXX (Path A) or create new one (Path B)
+5. **Break down into tasks** - Identify discrete work units that can be parallelized
+6. **Create Beads issues** - One issue per task, include `Linear: LIN-XXX` in description
+7. **Create Linear sub-issues** - One per Beads task, include `Beads: bd-XXX` in description, set `parentId` to Linear parent
+8. **Set Beads dependencies** - Use `bd dep add` to define order constraints
+9. **Set Linear blockedBy relations** - Mirror Beads dependencies on Linear sub-issues
+10. **Hand off to orchestrators** - Work is ready when `bd ready` shows actionable items
 
 ## Spec Development
 
@@ -38,26 +91,58 @@ openspec add constraint "..."
 openspec add decision "..."
 ```
 
-## Creating Beads Epics
+## Creating Beads Epics + Linear Issues
 
-An "epic" is a group of related, dependent issues that form a logical unit of work.
+An "epic" is a group of related, dependent issues that form a logical unit of work. For every Beads issue you create, create a mirrored Linear sub-issue.
 
 ```bash
-# Create issues for an authentication epic
-bd create --title="Design auth database schema" --type=task --priority=1
-bd create --title="Implement JWT token service" --type=task --priority=1
-bd create --title="Create login API endpoint" --type=task --priority=2
-bd create --title="Create registration API endpoint" --type=task --priority=2
-bd create --title="Build login UI component" --type=task --priority=2
-bd create --title="Build registration UI component" --type=task --priority=2
+# 1. Establish the Linear parent (Path B example - starting from scratch)
+save_issue(title="Add JWT authentication", team="OneOff", project="API",
+           description="Epic: JWT auth with email/password.\n\nSpec: ...", state="In Progress")
+# → LIN-45
 
-# Set dependencies (UI depends on API, API depends on schema)
-bd dep add bd-105 bd-103  # login UI depends on login API
-bd dep add bd-106 bd-104  # registration UI depends on registration API
+# 2. Create Beads issues
+bd create --title="Design auth database schema" --type=task --priority=1
+# → bd-101
+bd create --title="Implement JWT token service" --type=task --priority=1
+# → bd-102
+bd create --title="Create login API endpoint" --type=task --priority=2
+# → bd-103
+bd create --title="Build login UI component" --type=task --priority=2
+# → bd-104
+
+# 3. Create mirrored Linear sub-issues (one per Beads task)
+save_issue(title="Design auth database schema", team="OneOff", project="API",
+           parentId="LIN-45", state="Todo", priority=2,
+           description="Beads: bd-101\n\nDesign the users and sessions tables.")
+# → LIN-46
+save_issue(title="Implement JWT token service", team="OneOff", project="API",
+           parentId="LIN-45", state="Todo", priority=2,
+           description="Beads: bd-102\n\nJWT signing, verification, refresh logic.")
+# → LIN-47
+save_issue(title="Create login API endpoint", team="OneOff", project="API",
+           parentId="LIN-45", state="Todo", priority=3,
+           description="Beads: bd-103\n\nPOST /auth/login endpoint.")
+# → LIN-48
+save_issue(title="Build login UI component", team="OneOff", project="Frontend",
+           parentId="LIN-45", state="Todo", priority=3,
+           description="Beads: bd-104\n\nLogin form component.")
+# → LIN-49
+
+# 4. Update Beads descriptions to cross-reference Linear
+bd update bd-101 --description="Linear: LIN-46"
+bd update bd-102 --description="Linear: LIN-47"
+bd update bd-103 --description="Linear: LIN-48"
+bd update bd-104 --description="Linear: LIN-49"
+
+# 5. Set Beads dependencies
 bd dep add bd-103 bd-101  # login API depends on schema
-bd dep add bd-104 bd-101  # registration API depends on schema
 bd dep add bd-103 bd-102  # login API depends on JWT service
-bd dep add bd-104 bd-102  # registration API depends on JWT service
+bd dep add bd-104 bd-103  # UI depends on login API
+
+# 6. Mirror dependencies in Linear
+save_issue(id="LIN-48", blockedBy=["LIN-46", "LIN-47"])
+save_issue(id="LIN-49", blockedBy=["LIN-48"])
 ```
 
 ## Dependency Graph
@@ -95,11 +180,14 @@ Bad: "Implement caching, add tests, update docs, deploy" (too big)
 Before ending your planning session:
 
 1. [ ] Spec is documented in OpenSpec
-2. [ ] All issues created in Beads
-3. [ ] Dependencies set correctly
-4. [ ] `bd ready` shows at least one actionable item
-5. [ ] `bd sync` committed the issues
-6. [ ] User understands what will be built
+2. [ ] Linear parent issue exists (created or confirmed from user-provided LIN-XXX)
+3. [ ] All Beads issues created with `Linear: LIN-XXX` in descriptions
+4. [ ] All Linear sub-issues created with `Beads: bd-XXX` in descriptions, correct `parentId`, correct project
+5. [ ] Beads dependencies set correctly (`bd dep add`)
+6. [ ] Linear `blockedBy` relations mirror Beads dependencies
+7. [ ] `bd ready` shows at least one actionable item
+8. [ ] `bd sync` committed the issues
+9. [ ] User understands what will be built
 
 ## Example Session
 
@@ -120,6 +208,9 @@ Before ending your planning session:
 ## Rules
 
 - **Don't implement** - Your job is planning, not coding
+- **Always create a Linear parent** - No exceptions, whether picking up an existing LIN-XXX or starting fresh
+- **Mirror everything** - Every Beads task gets a Linear sub-issue; every Linear sub-issue references its Beads task
+- **Right project** - Assign Linear issues to the correct project per the codebase mapping
 - **Be thorough** - Better to over-document than under-document
 - **Think parallel** - Structure dependencies to maximize parallel work
 - **Right-size issues** - Each should be completable by one subagent

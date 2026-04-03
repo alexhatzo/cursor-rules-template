@@ -29,20 +29,28 @@ Every subagent MUST:
 # 1. Use Serena for search (NOT grep/find)
 find_symbol("MyClass")  # Search code
 
-# 2. Complete assigned work
+# 2. Mark Linear sub-issue as In Progress
+# The Linear sub-issue ID is in the Beads issue description (Linear: LIN-XXX)
+save_issue(id="LIN-XXX", state="In Progress")
 
-# 3. Create beads issues for any additional work discovered
+# 3. Complete assigned work
+
+# 4. Create Beads issues for any additional work discovered
 # If you find bugs, improvements, or follow-up tasks:
 bd create --title="Issue discovered during bd-{id}" --priority=P2
 
-# 4. Git commit (REQUIRED - work is not done until committed!)
+# 5. Git commit (REQUIRED - work is not done until committed!)
 git add <changed-files>
 git commit -m "[bd-{id}] Brief description of changes"
 
-# 5. Close issue
+# 6. Close Beads issue
 bd close bd-{id}
 
-# 6. Return summary to orchestrator via Task return value
+# 7. Update Linear sub-issue to Done with implementation notes
+save_issue(id="LIN-XXX", state="Done",
+           description="Beads: bd-{id}\n\n## Implementation\n<what was built, key decisions, files changed>")
+
+# 8. Return summary to orchestrator via Task return value
 # (No send_message needed - orchestrator reads your return)
 ```
 
@@ -87,7 +95,9 @@ fetch_inbox(project_key, agent_name)
 5. Push to remote: `git push`
 6. Sync beads: `bd sync`
 7. Review any new issues created by subagents
-8. Plan next batch of work based on discovered issues
+8. If all Beads issues for the epic are now closed, mark the Linear parent issue as Done:
+   `save_issue(id="LIN-XXX", state="Done")`
+9. Plan next batch of work based on discovered issues
 
 **Work is NOT complete until `git push` succeeds.**
 
@@ -96,9 +106,11 @@ fetch_inbox(project_key, agent_name)
 Subagents have access to:
 - **Beads** - All `bd` commands
 - **Serena** - Code search and navigation
+- **Linear MCP** - `get_issue`, `save_issue` (update their own sub-issue status and description)
 - **Agent Mail** - Only if blocked/questions (register, send message, check inbox)
 
 Orchestrators additionally have:
+- **Linear MCP** - `save_issue` (mark Linear parent Done when epic completes)
 - **Agent Mail** - Always registered; file reservations; cross-orchestrator messaging
 
 ## Rules
@@ -114,6 +126,7 @@ Orchestrators additionally have:
 - **Discovered work → Beads** - Subagents create issues for bugs/improvements found
 - **Git commit per issue** - Each subagent commits before closing
 - **Orchestrator pushes** - After each batch, verify and push
+- **Linear always in sync** - Subagents set their Linear sub-issue to "In Progress" when starting, "Done" with implementation notes when closing. Orchestrator sets Linear parent to "Done" when all sub-issues are complete.
 
 ## Example
 
@@ -144,6 +157,9 @@ release_file_reservations(project_key, "OrchestratorAgent")
 bd ready  # Now bd-103 is unblocked
 bd sync
 git push
+
+# 7. If all epic issues closed, mark Linear parent Done
+save_issue(id="LIN-45", state="Done")
 ```
 
 **Subagent discovers issue while working:**
@@ -152,7 +168,7 @@ git push
 bd create "Fix memory leak in cache cleanup" --priority=P1 --type=bug
 
 # Returns summary including discovery
-return "Cache implemented. NOTE: Discovered memory leak, created bd-103."
+return "Cache implemented. NOTE: Discovered memory leak, created bd-107. Linear LIN-46 updated to Done."
 ```
 
 **Subagent blocked - needs to escalate:**
